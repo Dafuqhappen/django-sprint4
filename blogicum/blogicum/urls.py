@@ -21,7 +21,7 @@ urlpatterns = [
             template_name='registration/registration_form.html',
             form_class=UserCreationForm,
             success_url=reverse_lazy('blog:index'),
-            ),
-            name='registration',
         ),
+        name='registration',
+    ),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

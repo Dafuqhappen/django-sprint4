@@ -16,6 +16,7 @@ from .forms import PostForm, ProfileEditForm, CommentForm
 
 POSTS_LIMIT = 10
 
+
 def index(request):
     """
     Главная страница блога.
@@ -42,7 +43,7 @@ def get_published_posts_queryset():
                 pub_date__lte=timezone.now(),
                 category__is_published=True
             )
-            .order_by(*Post._meta.ordering)
+        .order_by(*Post._meta.ordering)
     )
 
 
@@ -144,12 +145,13 @@ class PostDetailView(DetailView):
                     <= timezone.now() and obj.category.is_published):
                 raise Http404("Пост не найден")
         return obj
-    
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['form'] = CommentForm()
         context['comments'] = self.object.comments.order_by('created_at')
         return context
+
 
 class PostCreateView(LoginRequiredMixin, CreateView):
     """
