@@ -117,10 +117,12 @@ class PostDetailView(DetailView):
 
     def get_object(self, queryset=None):
         post = super().get_object(queryset)
-        if (self.request.user != post.author 
-            and not post.is_published 
-            and post.pub_date <= timezone.now()
-            and post.category.is_published
+        if (
+            self.request.user != post.author and not (
+                post.is_published
+                and post.pub_date <= timezone.now()
+                and post.category.is_published
+            )
         ):
             raise Http404("Пост не найден")
         return post
