@@ -114,7 +114,7 @@ class PostDetailView(DetailView):
     context_object_name = 'post'
     pk_url_kwarg = 'post_id'
     # да, коммент не туда поставил изначально)
-    # без 116 строки тесты падают, мне нужно тогда в урлс менять на pk 
+    # без 116 строки тесты падают, мне нужно тогда в урлс менять на pk
     # и везде убирать post_id
     # (Generic detail view must be called
     # with either an object pk or a slug.)
@@ -244,6 +244,7 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
             kwargs={'post_id': self.kwargs.get('post_id')}
         )
 
+
 class CommentMixin:
     """
     Миксин для работы с объектом Comment:
@@ -251,6 +252,7 @@ class CommentMixin:
     - получает объект по comment_id и post_id,
     - строит success_url на детальную страницу поста.
     """
+
     model = Comment
     pk_url_kwarg = 'comment_id'
 
@@ -268,7 +270,10 @@ class CommentMixin:
         )
 
     def get_success_url(self):
-        return reverse_lazy('blog:post_detail', kwargs={'post_id': self.kwargs['post_id']})
+        return reverse_lazy(
+            'blog:post_detail',
+            kwargs={'post_id': self.kwargs['post_id']}
+        )
 
 
 class CommentUpdateView(LoginRequiredMixin, CommentMixin, UpdateView):
@@ -277,6 +282,7 @@ class CommentUpdateView(LoginRequiredMixin, CommentMixin, UpdateView):
     Доступна только автору комментария.
     После сохранения изменений происходит перенаправление на страницу поста.
     """
+
     form_class = CommentForm
     template_name = 'blog/comment.html'
     context_object_name = 'comment'
@@ -289,6 +295,7 @@ class CommentDeleteView(LoginRequiredMixin, CommentMixin, DeleteView):
     Перед удалением отображается подтверждающая страница.
     После удаления происходит перенаправление на страницу поста.
     """
+
     template_name = "blog/comment.html"
     context_object_name = "comment"
 
