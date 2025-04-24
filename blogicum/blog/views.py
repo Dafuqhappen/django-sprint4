@@ -41,9 +41,8 @@ def get_posts_queryset(with_filters=False, with_annotations=False):
             category__is_published=True
         )
     if with_annotations:
-        qs = qs.annotate(
-            comment_count=Count('comments')
-        ).order_by(*Post._meta.ordering)
+        qs = qs.annotate(comment_count=Count('comments'))
+        qs = qs.order_by('-pub_date')
     return qs
 
 
@@ -64,10 +63,10 @@ class ProfileListView(ListView):
 
     def get_queryset(self):
         user_obj = self.get_profile_user()
-        if self.request.user == user_obj:
-            qs = get_posts_queryset(with_annotations=True)
-        else:
-            qs = get_posts_queryset(with_filters=True, with_annotations=True)
+        qs = get_posts_queryset(
+            with_filters=(self.request.user != user_obj),
+            with_annotations=True
+        )
         return qs.filter(author=user_obj)
 
     def get_context_data(self, **kwargs):
@@ -114,6 +113,11 @@ class PostDetailView(DetailView):
     template_name = 'blog/detail.html'
     context_object_name = 'post'
     pk_url_kwarg = 'post_id'
+    # да, коммент не туда поставил изначально)
+    # без 116 строки тесты падают, мне нужно тогда в урлс менять на pk 
+    # и везде убирать post_id
+    # (Generic detail view must be called
+    # with either an object pk or a slug.)
 
     def get_object(self, queryset=None):
         post = super().get_object(queryset)
@@ -124,7 +128,7 @@ class PostDetailView(DetailView):
                 and post.category.is_published
             )
         ):
-            raise Http404("Пост не найден")
+            raise Http404('Пост не найден')
         return post
 
     def get_context_data(self, **kwargs):
@@ -203,9 +207,6 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
     template_name = "blog/comment.html"
     context_object_name = "post"
     pk_url_kwarg = 'post_id'
-    # без этой строчки тесты падают
-    # (Generic detail view must be called
-    # with either an object pk or a slug.)
 
     def dispatch(self, request, *args, **kwargs):
         post = self.get_object()
@@ -243,73 +244,53 @@ class CommentCreateView(LoginRequiredMixin, CreateView):
             kwargs={'post_id': self.kwargs.get('post_id')}
         )
 
-
-class CommentUpdateView(LoginRequiredMixin, UpdateView):
+class CommentMixin:
     """
-    Страница редактирования комментария.
-    Доступна только автору комментария.
-    После сохранения изменений происходит перенаправление на страницу поста.
+    Миксин для работы с объектом Comment:
+    - проверяет авторство в dispatch(),
+    - получает объект по comment_id и post_id,
+    - строит success_url на детальную страницу поста.
     """
-
     model = Comment
-    form_class = CommentForm
-    template_name = "blog/comment.html"
-    context_object_name = "comment"
+    pk_url_kwarg = 'comment_id'
 
     def dispatch(self, request, *args, **kwargs):
-        comment = get_object_or_404(
-            Comment,
-            pk=kwargs.get('comment_id'),
-            post__pk=kwargs.get('post_id')
-        )
+        comment = self.get_object()
         if comment.author != request.user:
-            return redirect('blog:post_detail', post_id=kwargs.get('post_id'))
+            return redirect('blog:post_detail', post_id=comment.post.pk)
         return super().dispatch(request, *args, **kwargs)
 
     def get_object(self, queryset=None):
         return get_object_or_404(
             Comment,
-            pk=self.kwargs.get('comment_id'),
-            post__pk=self.kwargs.get('post_id')
+            pk=self.kwargs['comment_id'],
+            post__pk=self.kwargs['post_id']
         )
 
     def get_success_url(self):
-        return reverse_lazy(
-            'blog:post_detail',
-            kwargs={'post_id': self.kwargs.get('post_id')}
-        )
+        return reverse_lazy('blog:post_detail', kwargs={'post_id': self.kwargs['post_id']})
 
 
-class CommentDeleteView(LoginRequiredMixin, DeleteView):
+class CommentUpdateView(LoginRequiredMixin, CommentMixin, UpdateView):
+    """
+    Страница редактирования комментария.
+    Доступна только автору комментария.
+    После сохранения изменений происходит перенаправление на страницу поста.
+    """
+    form_class = CommentForm
+    template_name = 'blog/comment.html'
+    context_object_name = 'comment'
+
+
+class CommentDeleteView(LoginRequiredMixin, CommentMixin, DeleteView):
     """
     Страница удаления комментария.
     Доступна только для автора комментария.
     Перед удалением отображается подтверждающая страница.
     После удаления происходит перенаправление на страницу поста.
     """
-
-    model = Comment
     template_name = "blog/comment.html"
     context_object_name = "comment"
-
-    def dispatch(self, request, *args, **kwargs):
-        comment = self.get_object()
-        if comment.author != self.request.user:
-            return redirect("blog:post_detail", post_id=comment.post.pk)
-        return super().dispatch(request, *args, **kwargs)
-
-    def get_object(self, queryset=None):
-        return get_object_or_404(
-            Comment,
-            pk=self.kwargs.get('comment_id'),
-            post__pk=self.kwargs.get('post_id')
-        )
-
-    def get_success_url(self):
-        return reverse_lazy(
-            "blog:post_detail", kwargs={
-                "post_id": self.object.post.pk}
-        )
 
 
 @login_required
