@@ -108,9 +108,7 @@ class CategoryListView(ListView):
 
 
 class PostDetailView(DetailView):
-    """
-    Детальная страница поста.
-    """
+    """Детальная страница поста."""
 
     model = Post
     template_name = 'blog/detail.html'
@@ -119,10 +117,10 @@ class PostDetailView(DetailView):
 
     def get_object(self, queryset=None):
         post = super().get_object(queryset)
-        if self.request.user != post.author and not (
-            post.is_published and
-            post.pub_date <= timezone.now() and
-            post.category.is_published
+        if (self.request.user != post.author 
+            and not post.is_published 
+            and post.pub_date <= timezone.now()
+            and post.category.is_published
         ):
             raise Http404("Пост не найден")
         return post
@@ -202,9 +200,10 @@ class PostDeleteView(LoginRequiredMixin, DeleteView):
     model = Post
     template_name = "blog/comment.html"
     context_object_name = "post"
-    pk_url_kwarg = 'post_id'   # без этой строчки тесты падают
-                               # (Generic detail view must be called 
-                               # with either an object pk or a slug.)
+    pk_url_kwarg = 'post_id'
+    # без этой строчки тесты падают
+    # (Generic detail view must be called
+    # with either an object pk or a slug.)
 
     def dispatch(self, request, *args, **kwargs):
         post = self.get_object()
@@ -306,9 +305,9 @@ class CommentDeleteView(LoginRequiredMixin, DeleteView):
 
     def get_success_url(self):
         return reverse_lazy(
-            "blog:post_detail", kwargs={ 
+            "blog:post_detail", kwargs={
                 "post_id": self.object.post.pk}
-        ) 
+        )
 
 
 @login_required
